@@ -1,0 +1,28 @@
+/* 
+ * This file is now mostly empty as styling has been migrated to Tailwind CSS utility classes.
+ * We use this space for global overrides like custom scrollbars for the dark mode aesthetic.
+ */
+
+/* Custom minimalist scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b; /* bg-zinc-950 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a; /* border-zinc-800 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46; /* text-zinc-600 */
+}
+
+/* Remove default outline but keep focus styles for accessibility handled by Tailwind */
+*:focus {
+  outline: none;
+}

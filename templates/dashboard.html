@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - P.U.L.S.E</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        },
+        colors: {
+          primary: '#10b981',
+          primaryHover: '#059669',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  body {
+    background-color: #09090b; /* zinc-950 */
+    color: #f4f4f5; /* zinc-100 */
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* Modal Animation */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-overlay {
+    animation: fadeIn 0.2s ease-out;
+  }
+  .modal-content {
+    animation: slideInUp 0.3s ease-out;
+  }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col selection:bg-primary selection:text-white">
+
+<!-- Navbar -->
+<nav class="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex-shrink-0">
+        <span class="text-xl font-bold tracking-tighter text-white">P.U.L.S.E</span>
+      </div>
+      <div class="flex items-center space-x-6">
+        <span id="userName" class="text-sm font-medium text-zinc-300">User</span>
+        <button onclick="showNotificationsModal()" class="text-sm font-medium text-zinc-300 hover:text-white transition-colors duration-200 flex items-center gap-2">
+          <span>🔔</span> Notifications
+        </button>
+        <a href="/redistribution-view" class="text-sm font-medium text-zinc-300 hover:text-white transition-colors duration-200">Redistribution</a>
+        <button onclick="logout()" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-200">Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+  
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div>
+      <h1 class="text-2xl font-bold text-white tracking-tight">Medicine Inventory</h1>
+      <p class="text-sm text-zinc-400 mt-1">Manage your stock and requests efficiently</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="showAddMedicineModal()" class="inline-flex items-center justify-center rounded-md bg-zinc-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-600 transition-colors border border-zinc-700">
+        + Add Medicine
+      </button>
+      <button onclick="showAddDemandModal()" class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors">
+        + Request Medicine
+      </button>
+    </div>
+  </div>
+  
+  <div class="mb-8 relative">
+    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+      <span class="text-zinc-500">🔍</span>
+    </div>
+    <input type="text" id="searchInput" placeholder="Search by medicine name, batch, or status..." onkeyup="filterMedicines()" class="block w-full rounded-md border-0 bg-zinc-900 py-2.5 pl-10 pr-3 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 placeholder:text-zinc-500 outline-none transition-shadow">
+  </div>
+  
+  <div id="medicineGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <!-- Medicines will be loaded here via JS -->
+  </div>
+
+</main>
+
+<!-- Add Medicine Modal -->
+<div id="addMedicineModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-screen items-end justify-center p-4 text-center sm:items-center sm:p-0">
+    <!-- Overlay -->
+    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm transition-opacity modal-overlay" aria-hidden="true" onclick="closeModal('addMedicineModal')"></div>
+    <!-- Modal panel -->
+    <div class="modal-content relative transform overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+      <div class="px-6 py-6 border-b border-zinc-800 flex justify-between items-center">
+        <h3 class="text-lg font-semibold leading-6 text-white" id="modal-title">Add Medicine to Inventory</h3>
+        <button type="button" onclick="closeModal('addMedicineModal')" class="text-zinc-400 hover:text-white transition-colors">
+          <span class="text-2xl leading-none">&times;</span>
+        </button>
+      </div>
+      <form id="addMedicineForm" class="p-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Medicine Name <span class="text-red-400">*</span></label>
+            <input type="text" id="medicine_name" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Batch Number <span class="text-red-400">*</span></label>
+            <input type="text" id="batch_number" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Current Stock <span class="text-red-400">*</span></label>
+            <input type="number" id="current_stock" min="1" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Avg Monthly Usage <span class="text-red-400">*</span></label>
+            <input type="number" id="avg_monthly_usage" min="0" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Days to Expiry <span class="text-red-400">*</span></label>
+            <input type="number" id="days_to_expiry" min="1" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+          <div>
+            <label class="block text-sm font-medium leading-6 text-zinc-300">Price per Unit (₹) <span class="text-red-400">*</span></label>
+            <input type="number" id="price_per_unit" min="1" value="100" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <label class="block text-sm font-medium leading-6 text-zinc-300">Expiry Date <span class="text-red-400">*</span></label>
+          <input type="date" id="expiry_date" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none [color-scheme:dark]">
+        </div>
+        
+        <button type="submit" class="w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover transition-colors">Add Medicine</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Demand Modal -->
+<div id="addDemandModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-screen items-end justify-center p-4 text-center sm:items-center sm:p-0">
+    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm transition-opacity modal-overlay" aria-hidden="true" onclick="closeModal('addDemandModal')"></div>
+    <div class="modal-content relative transform overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md">
+      <div class="px-6 py-6 border-b border-zinc-800 flex justify-between items-center">
+        <h3 class="text-lg font-semibold leading-6 text-white">Request Medicine</h3>
+        <button type="button" onclick="closeModal('addDemandModal')" class="text-zinc-400 hover:text-white transition-colors">
+          <span class="text-2xl leading-none">&times;</span>
+        </button>
+      </div>
+      <form id="addDemandForm" class="p-6">
+        <div class="mb-5">
+          <label class="block text-sm font-medium leading-6 text-zinc-300">Medicine Name <span class="text-red-400">*</span></label>
+          <input type="text" id="demand_medicine_name" placeholder="e.g., Paracetamol" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+        </div>
+    
+        <div class="mb-5">
+          <label class="block text-sm font-medium leading-6 text-zinc-300">Past Month Usage <span class="text-red-400">*</span></label>
+          <input type="number" id="past_month_usage" min="0" placeholder="Units used last month" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-1.5 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none">
+          <p class="mt-1 text-xs text-zinc-500">How many units did you use last month?</p>
+        </div>
+    
+        <div class="mb-6">
+          <label class="block text-sm font-medium leading-6 text-zinc-300">Urgency Level <span class="text-red-400">*</span></label>
+          <select id="urgency_level" required class="mt-2 block w-full rounded-md border-0 bg-zinc-950 py-2 text-white ring-1 ring-inset ring-zinc-800 focus:ring-2 focus:ring-inset focus:ring-primary sm:text-sm sm:leading-6 px-3 outline-none appearance-none">
+            <option value="" class="text-zinc-500">Select urgency</option>
+            <option value="low">Low - Can wait 2-4 weeks</option>
+            <option value="medium" selected>Medium - Need within 1-2 weeks</option>
+            <option value="high">High - Urgent (within days)</option>
+          </select>
+        </div>
+    
+        <button type="submit" class="w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover transition-colors">Submit Request</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Notifications Modal -->
+<div id="notificationsModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-screen items-start justify-end p-4 text-center sm:p-6">
+    <div class="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm transition-opacity modal-overlay" aria-hidden="true" onclick="closeModal('notificationsModal')"></div>
+    <div class="modal-content relative transform overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 text-left shadow-2xl transition-all w-full max-w-sm mt-12">
+      <div class="px-4 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+        <h3 class="text-base font-semibold leading-6 text-white flex items-center gap-2"><span>🔔</span> Notifications</h3>
+        <button type="button" onclick="closeModal('notificationsModal')" class="text-zinc-400 hover:text-white transition-colors">
+          <span class="text-2xl leading-none">&times;</span>
+        </button>
+      </div>
+      <div id="notificationsList" class="max-h-[60vh] overflow-y-auto p-0">
+        <div class="p-6 text-center text-zinc-500 text-sm">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+<script>
+// Check authentication
+if (!localStorage.getItem('token')) {
+  window.location.href = '/login';
+}
+
+const user = JSON.parse(localStorage.getItem('user'));
+if (user && user.name) {
+  document.getElementById('userName').textContent = user.name;
+}
+
+// Load medicines
+async function loadMedicines() {
+  try {
+    const response = await fetch(`/api/medicines?t=${Date.now()}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      cache: 'no-store'
+    });
+    
+    const medicines = await response.json();
+    displayMedicines(medicines);
+  } catch (error) {
+    console.error('Error loading medicines:', error);
+  }
+}
+
+function displayMedicines(medicines) {
+  const grid = document.getElementById('medicineGrid');
+  
+  if (!medicines || medicines.length === 0) {
+    grid.innerHTML = '<div class="col-span-full py-12 text-center text-zinc-500 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed">No medicines added yet. Click "+ Add Medicine" to start.</div>';
+    return;
+  }
+  
+  grid.innerHTML = medicines.map(med => {
+    let statusBg = 'bg-zinc-800/50 text-zinc-400 border-zinc-700';
+    if (med.status === 'SAFE') statusBg = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    if (med.status === 'REDISTRIBUTE') statusBg = 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+    if (med.status === 'CRITICAL') statusBg = 'bg-red-500/10 text-red-400 border-red-500/20';
+    
+    const urgentExpiry = med.days_to_expiry < 30 ? 'text-red-400 font-medium' : 'text-zinc-300';
+    
+    const progressWidth = Math.min((med.days_to_expiry / 180) * 100, 100);
+    let progressColor = 'bg-primary';
+    if (med.days_to_expiry < 60) progressColor = 'bg-yellow-500';
+    if (med.days_to_expiry < 30) progressColor = 'bg-red-500';
+
+    return `
+    <div class="medicine-card bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden flex flex-col hover:border-zinc-700 transition-colors shadow-sm" data-name="${med.medicine_name.toLowerCase()}">
+      <div class="p-5 flex-grow">
+        <div class="flex justify-between items-start mb-4 gap-2">
+          <h3 class="font-semibold text-white truncate" title="${med.medicine_name}">${med.medicine_name}</h3>
+          <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${statusBg}">
+            ${med.status}
+          </span>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between items-center pb-2 border-b border-zinc-800/50">
+            <span class="text-zinc-500">Stock</span>
+            <span class="font-medium text-zinc-300">${med.current_stock} units</span>
+          </div>
+          <div class="flex justify-between items-center pb-2 border-b border-zinc-800/50">
+            <span class="text-zinc-500">Expires in</span>
+            <span class="${urgentExpiry}">${med.days_to_expiry} days</span>
+          </div>
+          <div class="flex justify-between items-center pb-2 border-b border-zinc-800/50">
+            <span class="text-zinc-500">Monthly Usage</span>
+            <span class="font-medium text-zinc-300">${med.avg_monthly_usage} units</span>
+          </div>
+          <div class="flex justify-between items-center pb-2 border-b border-zinc-800/50">
+            <span class="text-zinc-500">Price/Unit</span>
+            <span class="font-medium text-zinc-300">₹${med.price_per_unit}</span>
+          </div>
+          ${med.surplus_probability ? `
+          <div class="flex justify-between items-center pt-1">
+            <span class="text-zinc-500 flex items-center gap-1">⚠️ Surplus Risk</span>
+            <span class="font-medium text-yellow-400">${(med.surplus_probability * 100).toFixed(1)}%</span>
+          </div>
+          ` : ''}
+        </div>
+      </div>
+      <div class="h-1 w-full bg-zinc-800">
+        <div class="h-1 ${progressColor}" style="width: ${progressWidth}%"></div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function filterMedicines() {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const cards = document.querySelectorAll('.medicine-card');
+  
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    card.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+  });
+}
+
+// Add medicine
+document.getElementById('addMedicineForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Adding...';
+  submitBtn.disabled = true;
+  
+  const formData = {
+    medicine_name: document.getElementById('medicine_name').value,
+    batch_number: document.getElementById('batch_number').value,
+    current_stock: parseInt(document.getElementById('current_stock').value),
+    avg_monthly_usage: parseInt(document.getElementById('avg_monthly_usage').value),
+    days_to_expiry: parseInt(document.getElementById('days_to_expiry').value),
+    expiry_date: document.getElementById('expiry_date').value,
+    price_per_unit: parseFloat(document.getElementById('price_per_unit').value)
+  };
+  
+  try {
+    const response = await fetch('/api/medicines', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    if (response.ok) {
+      showSuccessNotification('Medicine added successfully!');
+      closeModal('addMedicineModal');
+      document.getElementById('addMedicineForm').reset();
+      loadMedicines();
+    } else {
+      const data = await response.json();
+      alert(`Error: ${data.error || 'Failed to add medicine'}`);
+    }
+  } catch (error) {
+    alert('Error connecting to server.');
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+// Add Demand Form Submission
+document.getElementById('addDemandForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Submitting...';
+  submitBtn.disabled = true;
+  
+  const formData = {
+    medicine_name: document.getElementById('demand_medicine_name').value.trim(),
+    past_month_usage: parseInt(document.getElementById('past_month_usage').value),
+    urgency_level: document.getElementById('urgency_level').value
+  };
+  
+  try {
+    const response = await fetch('/api/demand', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      closeModal('addDemandModal');
+      document.getElementById('addDemandForm').reset();
+      showSuccessNotification(`Request for ${formData.medicine_name} submitted!`);
+    } else {
+      alert(`Error: ${data.error || 'Failed to submit demand'}`);
+    }
+  } catch (error) {
+    alert('Network error. Please try again.');
+  } finally {
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+});
+
+// Modal Logic
+function showAddMedicineModal() {
+  const modal = document.getElementById('addMedicineModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function showAddDemandModal() {
+  const modal = document.getElementById('addDemandModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function showNotificationsModal() {
+  const modal = document.getElementById('notificationsModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  loadNotifications();
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if(modal) {
+    modal.classList.add('hidden');
+    // only restore overflow if all modals are hidden
+    const anyOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(el => {
+      return el.parentElement.parentElement.classList.contains('hidden') === false && el.parentElement.parentElement.id !== modalId;
+    });
+    if(!anyOpen) document.body.style.overflow = 'auto';
+  }
+}
+
+// Notifications API
+async function loadNotifications() {
+  try {
+    const response = await fetch('/api/notifications', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    const notifications = await response.json();
+    const list = document.getElementById('notificationsList');
+    
+    if (!notifications || notifications.length === 0) {
+      list.innerHTML = '<div class="p-6 text-center text-zinc-500 text-sm">No notifications yet.</div>';
+      return;
+    }
+    
+    list.innerHTML = notifications.map(n => {
+      const isUnread = !n.is_read;
+      const bgClass = isUnread ? 'bg-zinc-800/80 border-l-2 border-l-primary' : 'bg-transparent border-l-2 border-l-transparent';
+      const titleClass = isUnread ? 'text-white font-medium' : 'text-zinc-300';
+      
+      return `
+      <div class="px-4 py-4 border-b border-zinc-800/50 ${bgClass} hover:bg-zinc-800/50 transition-colors">
+        <div class="flex justify-between items-start gap-4">
+          <strong class="text-sm ${titleClass} block mb-1">${n.title}</strong>
+          <span class="text-[11px] text-zinc-500 whitespace-nowrap mt-0.5">${new Date(n.created_at).toLocaleDateString(undefined, {month: 'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+        <div class="text-xs text-zinc-400 mt-1 leading-relaxed">
+          ${n.message}
+        </div>
+      </div>
+    `}).join('');
+  } catch (error) {
+    document.getElementById('notificationsList').innerHTML = '<div class="p-6 text-center text-red-400 text-sm">Failed to load notifications.</div>';
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/';
+}
+
+// Keyboard ESC handling
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    ['addMedicineModal', 'addDemandModal', 'notificationsModal'].forEach(closeModal);
+  }
+});
+
+// Toast Notification
+function showSuccessNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'fixed bottom-4 right-4 bg-primary text-white px-6 py-3 rounded-md shadow-lg font-medium text-sm z-50 flex items-center gap-2 transform transition-all duration-300 translate-y-0 opacity-100';
+  notification.innerHTML = `<span>✓</span> ${message}`;
+  
+  document.body.appendChild(notification);
+  
+  // Start animation immediately
+  setTimeout(() => {
+    notification.style.transform = 'translateY(100px)';
+    notification.style.opacity = '0';
+    setTimeout(() => {
+      if(document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
+loadMedicines();
+</script>
+
+</body>
+</html>

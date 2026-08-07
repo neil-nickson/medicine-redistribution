@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redistribution - P.U.L.S.E</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        },
+        colors: {
+          primary: '#10b981',
+          primaryHover: '#059669',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  body {
+    background-color: #09090b; /* zinc-950 */
+    color: #f4f4f5; /* zinc-100 */
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Modal Animation */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-overlay { animation: fadeIn 0.2s ease-out; }
+  .modal-content { animation: slideInUp 0.3s ease-out; }
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col selection:bg-primary selection:text-white">
+
+<!-- Navbar -->
+<nav class="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <div class="flex-shrink-0">
+        <span class="text-xl font-bold tracking-tighter text-white">P.U.L.S.E</span>
+      </div>
+      <div class="flex items-center space-x-6">
+        <a href="/dashboard" class="text-sm font-medium text-zinc-300 hover:text-white transition-colors duration-200">Dashboard</a>
+        <button onclick="showNotificationsModal()" class="text-sm font-medium text-zinc-300 hover:text-white transition-colors duration-200 flex items-center gap-2">
+          <span>🔔</span> Notifications
+        </button>
+        <button onclick="runRedistribution()" class="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors">
+          🔄 Find Matches
+        </button>
+        <button onclick="logout()" class="text-sm font-medium text-zinc-400 hover:text-white transition-colors duration-200">Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+  
+  <div class="flex flex-col mb-8">
+    <h1 class="text-2xl font-bold text-white tracking-tight">Redistribution Opportunities</h1>
+    <p class="text-sm text-zinc-400 mt-1">AI-matched medicine transfers optimized for profitability</p>
+  </div>
+  
+  <div id="matchesGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Matches will be loaded here -->
+  </div>
+
+</main>
+
+<!-- Notifications Modal -->
+<div id="notificationsModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-screen items-start justify-end p-4 text-center sm:p-6">
+    <div class="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm transition-opacity modal-overlay" aria-hidden="true" onclick="closeModal('notificationsModal')"></div>
+    <div class="modal-content relative transform overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 text-left shadow-2xl transition-all w-full max-w-sm mt-12">
+      <div class="px-4 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+        <h3 class="text-base font-semibold leading-6 text-white flex items-center gap-2"><span>🔔</span> Notifications</h3>
+        <button type="button" onclick="closeModal('notificationsModal')" class="text-zinc-400 hover:text-white transition-colors">
+          <span class="text-2xl leading-none">&times;</span>
+        </button>
+      </div>
+      <div id="notificationsList" class="max-h-[60vh] overflow-y-auto p-0">
+        <div class="p-6 text-center text-zinc-500 text-sm">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- View Details Modal -->
+<div id="viewDetailsModal" class="hidden fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+    <div class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm transition-opacity modal-overlay" aria-hidden="true" onclick="closeModal('viewDetailsModal')"></div>
+    <div class="modal-content relative transform overflow-hidden rounded-xl bg-zinc-900 border border-zinc-800 text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+      <div class="px-6 py-5 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+        <h3 class="text-lg font-semibold leading-6 text-white" id="vd-title">Match Details</h3>
+        <button type="button" onclick="closeModal('viewDetailsModal')" class="text-zinc-400 hover:text-white transition-colors">
+          <span class="text-2xl leading-none">&times;</span>
+        </button>
+      </div>
+      <div class="p-6">
+        <div class="space-y-4">
+          <div class="bg-zinc-950 p-4 rounded-lg border border-zinc-800/50">
+            <h4 class="text-sm font-medium text-zinc-400 mb-2">Medicine Information</h4>
+            <div class="flex justify-between items-center text-sm mb-1"><span class="text-zinc-500">Name:</span> <strong class="text-white" id="vd-med-name"></strong></div>
+            <div class="flex justify-between items-center text-sm mb-1"><span class="text-zinc-500">Quantity:</span> <strong class="text-white" id="vd-qty"></strong></div>
+            <div class="flex justify-between items-center text-sm"><span class="text-zinc-500">Expires In:</span> <strong class="text-white" id="vd-expiry"></strong></div>
+          </div>
+          
+          <div class="bg-zinc-950 p-4 rounded-lg border border-zinc-800/50">
+            <h4 class="text-sm font-medium text-zinc-400 mb-2">Parties Involved</h4>
+            <div class="mb-3">
+              <div class="text-xs text-zinc-500 uppercase">Donor</div>
+              <div class="text-sm text-white" id="vd-donor-name"></div>
+              <div class="text-xs text-zinc-400" id="vd-donor-loc"></div>
+            </div>
+            <div>
+              <div class="text-xs text-zinc-500 uppercase">Receiver</div>
+              <div class="text-sm text-white" id="vd-recv-name"></div>
+              <div class="text-xs text-zinc-400" id="vd-recv-loc"></div>
+            </div>
+          </div>
+          
+          <div class="bg-zinc-950 p-4 rounded-lg border border-zinc-800/50">
+            <h4 class="text-sm font-medium text-zinc-400 mb-2">Financials</h4>
+            <div class="flex justify-between items-center text-sm mb-1"><span class="text-zinc-500">Original Price:</span> <span class="text-zinc-300" id="vd-orig-price"></span></div>
+            <div class="flex justify-between items-center text-sm mb-1"><span class="text-zinc-500">Discounted Price:</span> <span class="text-primary" id="vd-disc-price"></span></div>
+            <div class="flex justify-between items-center text-sm mb-1"><span class="text-zinc-500">Transfer Cost:</span> <span class="text-zinc-300" id="vd-trans-cost"></span></div>
+            <div class="flex justify-between items-center text-sm font-medium mt-2 pt-2 border-t border-zinc-800"><span class="text-zinc-300">Net Profit/Savings:</span> <span class="text-white" id="vd-net"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 py-4 border-t border-zinc-800 bg-zinc-950/50 text-right">
+        <button type="button" class="rounded-md bg-zinc-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 transition-colors" onclick="closeModal('viewDetailsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+if (!localStorage.getItem('token')) {
+  window.location.href = '/login';
+}
+
+async function runRedistribution() {
+  if (!confirm('Run AI redistribution matching? This will find optimal transfer opportunities.')) return;
+  
+  try {
+    const response = await fetch('/api/run-redistribution', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    const data = await response.json();
+    showSuccessNotification(data.message + ' (Matches found: ' + data.matches_found + ')');
+    loadMatches();
+  } catch (error) {
+    alert('Error running redistribution');
+  }
+}
+
+async function loadMatches() {
+  try {
+    const response = await fetch('/api/redistribution-matches', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    const matches = await response.json();
+    displayMatches(matches);
+  } catch (error) {
+    console.error('Error loading matches:', error);
+  }
+}
+
+function displayMatches(matches) {
+  const grid = document.getElementById('matchesGrid');
+  
+  if (matches.length === 0) {
+    grid.innerHTML = '<div class="col-span-full py-12 text-center text-zinc-500 bg-zinc-900/50 rounded-xl border border-zinc-800 border-dashed">No redistribution matches yet. Click "Find Matches" to run AI matching.</div>';
+    return;
+  }
+  
+  grid.innerHTML = matches.map(match => {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const isReceiver = match.receiver_id === user.id;
+    const isProfitable = match.net_profit > 0;
+    
+    const borderClass = isProfitable ? 'border-primary/30 hover:border-primary/50' : 'border-zinc-800 hover:border-zinc-700';
+    const badgeClass = isProfitable ? 'bg-primary/10 text-primary border-primary/20' : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+    
+    return `
+    <div class="bg-zinc-900 rounded-xl border ${borderClass} overflow-hidden flex flex-col transition-colors shadow-sm">
+      <div class="p-5 flex flex-col h-full">
+        <div class="flex justify-between items-start mb-6 gap-2">
+          <h3 class="font-semibold text-white truncate text-lg" title="${match.medicine_name}">${match.medicine_name}</h3>
+          <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium border ${badgeClass}">
+            ${isProfitable ? 'Profitable' : 'Break-even'}
+          </span>
+        </div>
+        
+        <div class="flex items-center justify-between mb-6 bg-zinc-950/50 p-4 rounded-lg border border-zinc-800/50">
+          <div class="text-center w-1/3">
+            <div class="text-xs text-zinc-500 uppercase tracking-wider mb-1">From</div>
+            <strong class="block text-sm text-zinc-300 truncate" title="${match.donor_name}">${match.donor_name}</strong>
+            <div class="text-xs text-zinc-500 truncate" title="${match.donor_location}">📍 ${match.donor_location}</div>
+          </div>
+          <div class="text-center w-1/3 text-zinc-600 flex flex-col items-center">
+            <span class="text-xs font-mono bg-zinc-900 px-2 py-0.5 rounded text-zinc-400 mb-1 border border-zinc-800">${match.distance_km} km</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+          </div>
+          <div class="text-center w-1/3">
+            <div class="text-xs text-zinc-500 uppercase tracking-wider mb-1">To</div>
+            <strong class="block text-sm text-zinc-300 truncate" title="${match.receiver_name}">${match.receiver_name}</strong>
+            <div class="text-xs text-zinc-500 truncate" title="${match.receiver_location}">📍 ${match.receiver_location}</div>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-zinc-950/50 p-3 rounded-lg border border-zinc-800/50">
+            <div class="text-xs text-zinc-500 mb-1">Details</div>
+            <div class="text-sm flex justify-between"><span class="text-zinc-400">Qty:</span> <strong class="text-white">${match.quantity} units</strong></div>
+            <div class="text-sm flex justify-between"><span class="text-zinc-400">Expires:</span> <strong class="${match.days_to_expiry < 30 ? 'text-red-400' : 'text-white'}">${match.days_to_expiry} days</strong></div>
+          </div>
+          <div class="bg-zinc-950/50 p-3 rounded-lg border border-zinc-800/50">
+            <div class="text-xs text-zinc-500 mb-1">Match Metrics</div>
+            <div class="text-sm flex justify-between"><span class="text-zinc-400">Score:</span> <strong class="text-white">${(match.redistribution_score * 100).toFixed(1)}%</strong></div>
+            <div class="text-sm flex justify-between"><span class="text-zinc-400">Discount:</span> <strong class="text-primary">${match.discount_percent}% OFF</strong></div>
+          </div>
+        </div>
+        
+        <div class="space-y-2 text-sm mb-6 bg-zinc-950/50 p-4 rounded-lg border border-zinc-800/50 flex-grow">
+          <div class="flex justify-between items-center text-zinc-400">
+            <span>Original Price:</span>
+            <span>₹${match.original_price.toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between items-center text-primary">
+            <span>After Discount:</span>
+            <span>₹${match.discounted_price.toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between items-center text-zinc-400 border-b border-zinc-800 pb-2">
+            <span>Transfer Cost:</span>
+            <span>₹${match.transfer_cost.toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between items-center pt-2 font-medium">
+            <span class="text-zinc-300">Net ${isReceiver ? 'Cost' : 'Benefit'}:</span>
+            <span class="${isProfitable ? 'text-primary' : 'text-white'}">₹${Math.abs(match.net_profit).toFixed(2)}</span>
+          </div>
+        </div>
+        
+        <div class="mt-auto">
+          ${match.status === 'COMPLETED' ? 
+            `<button class="w-full justify-center rounded-md bg-emerald-900/30 text-emerald-500 px-3 py-2 text-sm font-semibold cursor-not-allowed border border-emerald-800/30" disabled>✓ Completed</button>` :
+            isReceiver ? 
+              (match.status === 'REQUESTED' ?
+                `<button class="w-full justify-center rounded-md bg-zinc-800 px-3 py-2 text-sm font-semibold text-zinc-500 cursor-not-allowed" disabled>Requested</button>` :
+                `<button class="w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover transition-colors" onclick="acceptOffer(${match.id})">Accept Offer</button>`) :
+              (match.status === 'REQUESTED' ? 
+                `<button class="w-full justify-center rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primaryHover transition-colors" onclick="completeTransaction(${match.id})">Approve Request</button>` :
+                `<button class="w-full justify-center rounded-md bg-zinc-800 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-zinc-700 transition-colors border border-zinc-700" onclick='viewDetails(${JSON.stringify(match).replace(/'/g, "&apos;")})'>View Details</button>`)
+          }
+        </div>
+      </div>
+    </div>
+  `}).join('');
+}
+
+async function acceptOffer(matchId) {
+  try {
+    const response = await fetch('/api/accept-offer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ match_id: matchId })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showSuccessNotification(data.message || 'Request sent successfully!');
+      loadMatches();
+    } else {
+      alert(data.error || 'Failed to accept offer');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred while accepting the offer.');
+  }
+}
+
+async function completeTransaction(matchId) {
+  if (!confirm('Are you sure you want to approve this request? This will deduct the units from your inventory.')) return;
+  
+  try {
+    const response = await fetch('/api/complete-transaction', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ match_id: matchId })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      showSuccessNotification(data.message || 'Transaction completed successfully!');
+      loadMatches();
+    } else {
+      alert(data.error || 'Failed to complete transaction');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred while completing the transaction.');
+  }
+}
+
+function viewDetails(match) {
+  document.getElementById('vd-med-name').textContent = match.medicine_name;
+  document.getElementById('vd-qty').textContent = match.quantity;
+  document.getElementById('vd-expiry').textContent = match.days_to_expiry;
+  
+  document.getElementById('vd-donor-name').textContent = match.donor_name;
+  document.getElementById('vd-donor-loc').textContent = match.donor_location;
+  
+  document.getElementById('vd-recv-name').textContent = match.receiver_name;
+  document.getElementById('vd-recv-loc').textContent = match.receiver_location;
+  
+  document.getElementById('vd-orig-price').textContent = '₹' + match.original_price.toFixed(2);
+  document.getElementById('vd-disc-price').textContent = '₹' + match.discounted_price.toFixed(2);
+  document.getElementById('vd-trans-cost').textContent = '₹' + match.transfer_cost.toFixed(2);
+  document.getElementById('vd-net').textContent = '₹' + Math.abs(match.net_profit).toFixed(2);
+  
+  const modal = document.getElementById('viewDetailsModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = '/';
+}
+
+function showNotificationsModal() {
+  const modal = document.getElementById('notificationsModal');
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  loadNotifications();
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if(modal) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+  }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  if (event.target.classList.contains('modal-overlay')) {
+    event.target.parentElement.parentElement.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+  }
+}
+
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeModal('notificationsModal');
+  }
+});
+
+async function loadNotifications() {
+  try {
+    const response = await fetch('/api/notifications', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    const notifications = await response.json();
+    const list = document.getElementById('notificationsList');
+    
+    if (!notifications || notifications.length === 0) {
+      list.innerHTML = '<div class="p-6 text-center text-zinc-500 text-sm">No notifications yet.</div>';
+      return;
+    }
+    
+    list.innerHTML = notifications.map(n => {
+      const isUnread = !n.is_read;
+      const bgClass = isUnread ? 'bg-zinc-800/80 border-l-2 border-l-primary' : 'bg-transparent border-l-2 border-l-transparent';
+      const titleClass = isUnread ? 'text-white font-medium' : 'text-zinc-300';
+      
+      return `
+      <div class="px-4 py-4 border-b border-zinc-800/50 ${bgClass} hover:bg-zinc-800/50 transition-colors">
+        <div class="flex justify-between items-start gap-4">
+          <strong class="text-sm ${titleClass} block mb-1">${n.title}</strong>
+          <span class="text-[11px] text-zinc-500 whitespace-nowrap mt-0.5">${new Date(n.created_at).toLocaleDateString(undefined, {month: 'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+        <div class="text-xs text-zinc-400 mt-1 leading-relaxed">
+          ${n.message}
+        </div>
+      </div>
+    `}).join('');
+  } catch (error) {
+    document.getElementById('notificationsList').innerHTML = '<div class="p-6 text-center text-red-400 text-sm">Failed to load notifications.</div>';
+  }
+}
+
+// Toast Notification
+function showSuccessNotification(message) {
+  const notification = document.createElement('div');
+  notification.className = 'fixed bottom-4 right-4 bg-primary text-white px-6 py-3 rounded-md shadow-lg font-medium text-sm z-50 flex items-center gap-2 transform transition-all duration-300 translate-y-0 opacity-100';
+  notification.innerHTML = `<span>✓</span> ${message}`;
+  
+  document.body.appendChild(notification);
+  
+  // Start animation immediately
+  setTimeout(() => {
+    notification.style.transform = 'translateY(100px)';
+    notification.style.opacity = '0';
+    setTimeout(() => {
+      if(document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 300);
+  }, 3000);
+}
+
+// Load matches on page load
+loadMatches();
+</script>
+
+</body>
+</html>
